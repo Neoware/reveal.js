@@ -1,49 +1,476 @@
 <!doctype html>
 <html>
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+    <title>reveal.js</title>
 
-		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/black.css">
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/black.css">
 
-		<!-- Theme used for syntax highlighting of code -->
-		<link rel="stylesheet" href="lib/css/zenburn.css">
+    <!-- Theme used for syntax highlighting of code -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
 
-		<!-- Printing and PDF exports -->
-		<script>
-			var link = document.createElement( 'link' );
-			link.rel = 'stylesheet';
-			link.type = 'text/css';
-			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
-			document.getElementsByTagName( 'head' )[0].appendChild( link );
-		</script>
-	</head>
-	<body>
-		<div class="reveal">
-			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
-			</div>
-		</div>
+    <!-- Printing and PDF exports -->
+    <script>
+        var link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.type = 'text/css';
+        link.href = window.location.search.match(/print-pdf/gi) ? 'css/print/pdf.css' : 'css/print/paper.css';
+        document.getElementsByTagName('head')[0].appendChild(link);
+    </script>
+</head>
+<body>
+<div class="reveal">
+    <div class="slides">
+        <section>
+            <h1>Presentation HTTP/2</h1>
+            by Alexandre Chaouat ©
+        </section>
+        <section>
+            <h3>un protocole chiffre ou non chiffre</h3>
+            <ul>
+                <li>Non chiffre : h2c</li>
+                <ul>
+                    <li>Non gere par les principaux navigateurs</li>
+                    <li>Sera surement utilise pour du serveur-serveur</li>
+                </ul>
+                <li>Chiffre par du TLS : h2</li>
+            </ul>
+        </section>
 
-		<script src="lib/js/head.min.js"></script>
-		<script src="js/reveal.js"></script>
+        <section>
+            <section>
+                <h3>Informations generales</h3>
+                Les ports utilises sont les memes que pour HTTP/1
+                <ul>
+                    <li>port 80 pour h2c</li>
+                    <li>port 443 pour h2</li>
+                </ul>
+            </section>
 
-		<script>
-			// More info about config & dependencies:
-			// - https://github.com/hakimel/reveal.js#configuration
-			// - https://github.com/hakimel/reveal.js#dependencies
-			Reveal.initialize({
-				dependencies: [
-					{ src: 'plugin/markdown/marked.js' },
-					{ src: 'plugin/markdown/markdown.js' },
-					{ src: 'plugin/notes/notes.js', async: true },
-					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
-				]
-			});
-		</script>
-	</body>
+            <section>
+                <h3>Informations generales</h3>
+                HTTP/2 est un protocole binaire !
+            </section>
+
+            <section>
+                <h3>Informations generales</h3>
+                Le format d'URI sont les memes que pour HTTP/1
+                <ul>
+                    <li>http://hostname/path pour h2c</li>
+                    <li>https://hostname/path pour h2c</li>
+                </ul>
+            </section>
+        </section>
+
+        <section>
+            <section>
+                <h3>Initialisation d'une connexion h2c</h3>
+                Envoi d'une requete d'upgrade
+                <pre>
+                <code>
+GET / HTTP/1.1
+ Host: server.example.com
+ Connection: Upgrade, HTTP2-Settings
+ Upgrade: h2c
+ HTTP2-Settings: [base64url of HTTP/2 SETTINGS payload]
+                </code>
+            </pre>
+
+            </section>
+
+            <section>
+                <h3>Initialisation d'une connexion h2c</h3>
+                Si le serveur gere HTTP/2
+                <pre>
+                <code>
+    HTTP/1.1 101 Switching Protocols
+     Connection: Upgrade
+     Upgrade: h2c
+                </code>
+            </pre>
+                Sinon il repondra sans prendre en compte les headers
+            </section>
+        </section>
+
+        <section>
+            <h3>Initialisation d'une connexion h2</h3>
+            <ul>
+                <li>Utilisation de l'ALPN => Application Layer Protocol Negotiation</li>
+                <li>Extension TLS pour negocier le protocole utilise apres le handshake</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Initialisation d'une connexion h2c avec connaissance prealable</h3>
+            <ul>
+                <li>Environnement maitrise (serveur-serveur par exemple)</li>
+                <li>Possibilite de passer directement a l'etape suivante de l'initialisation</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Initialisation d'une connexion HTTP/2</h3>
+            <ul>
+                <li>Envoie d'une connection preface</li>
+                <li>24 octets pour le client a envoyer suivi d'une frame SETTINGS qui sera ACK</li>
+                <li>SETTINGS frame a envoyer par le serveur qui sera ACK</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Optimisation possible</h3>
+            <ul>
+                <li>Le client a la possibilite d'envoyer des frames directement apres l'envoi le connection preface</li>
+                <li>Probleme potentiel avec la configuration</li>
+                <li>A ne faire qu'en environnement maitrise</li>
+            </ul>
+
+        </section>
+
+        <section>
+            <h3>La frame</h3>
+            <pre>
+                <code>
++-----------------------------------------------+
+|                 Length (24)                   |
++---------------+---------------+---------------+
+|   Type (8)    |   Flags (8)   |
++-+-------------+---------------+-----------------
+|R|                 Stream Identifier (31)        |
++=+===============================================+
+|                   Frame Payload (0...)          |
++-------------------------------------------------+
+                </code>
+            </pre>
+        </section>
+
+        <section>
+            <h3>Le multiplexing</h3>
+            <ul>
+                <li>Rendu possible par les streams</li>
+                <li>Stream = flux de de frames bidirectionnel</li>
+                <li>un stream corresponds a une requete reponse</li>
+                <li>Pas les memes problemes que le HTTP pipelining</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>La frame Header</h3>
+            <ul>
+                <li>Permet d'ouvrir un nouveau stream</li>
+                <li>Contient les headers de la requete</li>
+                <li>Utilise le systeme de compression hpack</li>
+                <li>Divise en fragment</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>La frame Header</h3>
+            <pre>
+                    <code>
++---------------+
+|Pad Length? (8)|
++-+-------------+------------------------------+
+|E|                 Stream Dependency? (31)    |
++-+-------------+------------------------------+
+|  Weight? (8)  |
++-+-------------+------------------------------+
+|                   Header Block Fragment (*)...
++----------------------------------------------+
+|                           Padding (*)        |
++----------------------------------------------+
+                    </code>
+                </pre>
+        </section>
+
+        <section>
+            <h3>La frame Header : Les flags</h3>
+            <ul>
+                <li>END_STREAM</li>
+                <li>END_HEADERS</li>
+                <li>PADDED</li>
+                <li>PRIORITY</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>La frame CONTINUATION</h3>
+            <ul>
+                <li>Permet d'envoyer la suite des headers blocks fragments</li>
+                <li>Aucune frame entre des frame HEADERS et CONTINUATION</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Les pseudos headers</h3>
+            <ul>
+                <li>:method = GET / POST etc.</li>
+                <li>:path = the request path</li>
+                <li>:scheme = http ou https</li>
+                <li>:authory = equivalent au Host: de HTTP/1</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Hpack</h3>
+            <ul>
+                <li>Possibilite d'encode la value des headers avec un encoding Huffman</li>
+                <li>Table statique contenant les headers les plus repandus</li>
+                <li>Table dynamique qui se peuple en fonction des requetes</li>
+                <li>Possibilite d'envoyer l'index dans la table au lieu du header</li>
+                <li>Compression et decompression stateful, dont le contexte est partage</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Example de Hpack</h3>
+            <img src="images/example1.png">
+        </section>
+
+        <section>
+            <h3>Example de Hpack</h3>
+            <img src="images/example2.png">
+        </section>
+
+        <section>
+            <h3>Frame priority</h3>
+            <pre>
+                <code>
+
+                </code>
+            </pre>
+            <ul>
+                <li>Permet de fixer les dependances d'un stream par rapport a un autre</li>
+                <li>Permet de fixer un poids au stream (attribution de ressources)</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Dependance entre les streams</h3>
+            <ul>
+                <li>Un stream peut etre dependant de la completion d'un autre</li>
+                <pre>
+                    <code>
+
+       A                 A
+      / \      ==>      /|\
+     B   C             B D C
+                    </code>
+                </pre>
+            </ul>
+        </section>
+        <section>
+            <h3>Dependance entre les streams </h3>
+            <ul>
+                <li>Peut etre fixe a la creation du stream</li>
+                <li>Ou via une frame priority</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>Dependance exclusive</h3>
+            <pre>
+                <code>
+                         A
+       A                 |
+      / \      ==>       D
+     B   C              / \
+                       B   C
+                </code>
+            </pre>
+        </section>
+
+        <section>
+            <h3>Dependance repriorisation</h3>
+            <pre>
+                <code>
+
+   x                x                x                 x
+   |               / \               |                 |
+   A              D   A              D                 D
+  / \            /   / \            / \                |
+ B   C     ==>  F   B   C   ==>    F   A       OR      A
+    / \                 |             / \             /|\
+   D   E                E            B   C           B C F
+   |                                     |             |
+   F                                     E             E
+              (intermediate)   (non-exclusive)    (exclusive)
+                </code>
+            </pre>
+        </section>
+
+        <section>
+            <h3>Flow control</h3>
+            <ul>
+                <li>Chaque endpoint est capable de gerer le nombre d'octets que son peer peut lui envoyer</li>
+                <li>Cela passe par les WINDOW_UPDATE frame</li>
+                <li>Valeur initialement set a 65,535 octets</li>
+                <li>Ne concerne que les frame DATA</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>La frame WINDOW_UPDATE</h3>
+            Elle peut s'appliquer a la connection ou a un stream
+            <pre>
+                <code>
++-+--------------------------------------------+
+|R|              Window Size Increment (31)    |
++-+--------------------------------------------+
+                </code>
+            </pre>
+        </section>
+        <section>
+            <h3>La frame DATA</h3>
+            Permet d'envoyer du body
+            <pre>
+                <code>
++---------------+
+|Pad Length? (8)|
++---------------+---------------------------+
+|                            Data (*)     ...
++-------------------------------------------+
+|                           Padding (*)   ...
++-------------------------------------------+
+                </code>
+            </pre>
+        </section>
+
+        <section>
+            <h3>La frame RST_STREAM</h3>
+            Permet de mettre fin a un stream en cas de probleme
+            <pre>
+                <code>
++-------------------------------------------------+
+|                        Error Code (32)          |
++-------------------------------------------------+
+                </code>
+            </pre>
+        </section>
+
+        <section>
+            <h3>La frame PING</h3>
+            <ul>
+                <li>Pas associe a un stream en particulier</li>
+                <li>Flag ACK</li>
+                <li>Plus haut priorite que toutes les autres frames</li>
+            </ul>
+            <pre>
+    <code>
++------------------------------------------------------+
+|                                                      |
+|                      Opaque Data (64)                |
+|                                                      |
++------------------------------------------------------+
+    </code>
+</pre>
+        </section>
+
+        <section>
+            <h3>La frame GOAWAY</h3>
+            <ul>Permet d'annoncer la fermeture d'une connexion</ul>
+            <pre>
+                <code>
+    +-+-------------------------------------------------------------+
+    |R|                  Last-Stream-ID (31)                        |
+    +-+-------------------------------------------------------------+
+    |                      Error Code (32)                          |
+    +---------------------------------------------------------------+
+    |                  Additional Debug Data (*)                    |
+    +---------------------------------------------------------------+
+                </code>
+            </pre>
+        </section>
+
+        <section>
+            <h3>La frame PUSH_PROMISE</h3>
+            <ul>
+                <li>Permet au serveur de proposer l'envoie de ressources sans demande du client</li>
+                <li>Reserve un stream</li>
+                <li>Envoie la liste des headers correspondant a la requete</li>
+                <li>peut etre desactivable</li>
+                <li>peut etre cancel par le client</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>La frame PUSH_PROMISE</h3>
+            <pre>
+                <code>
++---------------+
+|Pad Length? (8)|
++-+-------------+-----------------------------------------------+
+|R|                  Promised Stream ID (31)                    |
++-+-----------------------------+-------------------------------+
+|                   Header Block Fragment (*)                 ...
++---------------------------------------------------------------+
+|                           Padding (*)                       ...
++---------------------------------------------------------------+
+
+                </code>
+            </pre>
+        </section>
+
+        <section>
+            <h3>La frame SETTINGS</h3>
+            <ul>
+                <li>Envoyer dans le connection preface, puis quand on veut</li>
+                <li>SETTINGS_HEADER_TABLE_SIZE : default 4096</li>
+                <li>SETTINGS_ENABLE_PUSH : default true</li>
+                <li>SETTINGS_MAX_CONCURRENT_STREAMS : default unlimited</li>
+                <li>SSETTINGS_INITIAL_WINDOW_SIZE : default 65535</li>
+                <li>SETTINGS_MAX_FRAME_SIZE : default 16384</li>
+                <li>SETTINGS_MAX_HEADER_LIST_SIZE : default unlimited</li>
+                <li>flag ACK</li>
+            </ul>
+        </section>
+
+        <section>
+            <h3>La frame SETTINGS</h3>
+            <pre>
+                <code>
+    +-------------------------------+
+    |       Identifier (16)         |
+    +-------------------------------+-------------------------------+
+    |                        Value (32)                             |
+    +---------------------------------------------------------------+
+                </code>
+            </pre>
+        </section>
+
+        <section>
+            <h3>Cycle de vie des streams</h3>
+            <img src="images/lifecycle.png"/>
+        </section>
+
+<section>
+    <h1>Merci :)</h1>
+</section>
+    </div>
+</div>
+
+<script src="lib/js/head.min.js"></script>
+<script src="js/reveal.js"></script>
+
+<script>
+    // More info about config & dependencies:
+    // - https://github.com/hakimel/reveal.js#configuration
+    // - https://github.com/hakimel/reveal.js#dependencies
+    Reveal.initialize({
+        dependencies: [
+            {src: 'plugin/markdown/marked.js'},
+            {src: 'plugin/markdown/markdown.js'},
+            {src: 'plugin/notes/notes.js', async: true},
+            {
+                src: 'plugin/highlight/highlight.js', async: true, callback: function () {
+                hljs.initHighlightingOnLoad();
+            }
+            }
+        ]
+    });
+</script>
+</body>
 </html>
